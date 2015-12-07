@@ -1,0 +1,57 @@
+
+====================================启动
+bin/flume-ng agent --conf conf --conf-file conf/mtp.conf --name a1 -Dflume.root.logger=INFO,console
+bin/flume-ng agent --conf conf --conf-file conf/mtp.conf --name agent -Dflume.root.logger=INFO,console
+export JAVA_OPTS="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005";bin/flume-ng agent --conf conf --conf-file conf/mtp.conf --name a1 -Dflume.root.logger=INFO,console
+bin/flume-ng agent --conf conf --conf-file conf/mtp.conf --name a1 -Dflume.root.logger=INFO,console
+
+
+
+
+====================================源模式匹配
+https://www.elastic.co/guide/en/logstash/current/plugins-inputs-kafka.html
+
+agent.sinks.elasticsearch.indexType=xxx
+agent.sinks.elasticsearch.indexName=xxx-test
+agent.sinks.elasticsearch.hostNames=192.168.1.159:9300
+#agent.sinks.elasticsearch.indexType = external
+
+agent.sources.tail.interceptors.i1.type = regex_extractor
+agent.sources.tail.interceptors.i1.regex = ^(?:\\n)?(\\d\\d\\d\\d-\\d\\d-\\d\\d\\s\\d\\d:\\d\\d:\\d\\d\\.\\d\\d\\d)
+agent.sources.tail.interceptors.i1.serializers = s1
+agent.sources.tail.interceptors.i1.serializers.s1.type = org.apache.flume.interceptor.RegexExtractorInterceptorMillisSerializer
+agent.sources.tail.interceptors.i1.serializers.s1.name = timestamp
+agent.sources.tail.interceptors.i1.serializers.s1.pattern = yyyy-MM-dd HH:mm:ss.SSS
+
+#agent.sinks.elasticsearch.indexName=customer
+
+#agent.sinks.elasticsearch.clusterName=elasticsearch
+#agent.sinks.elasticsearch.clusterName=elasticsearch
+agent.sinks.elasticsearch.serializer=org.apache.flume.sink.elasticsearch.ElasticSearchLogStashEventSerializer
+agent.sinks.elasticsearch.indexNameBuilder=org.apache.flume.sink.elasticsearch.SimpleIndexNameBuilder
+agent.sinks.elasticsearch.ttl=5d
+
+
+
+====================================多路通道选择器配置，基于header进行数据路由
+
+You don't need to write Java code to filter events. Use Regex Filtering Interceptor to filter events which body text matches some regular expression:
+
+agent.sources.logs_source.interceptors = regex_filter_interceptor
+agent.sources.logs_source.interceptors.regex_filter_interceptor.type = regex_filter
+agent.sources.logs_source.interceptors.regex_filter_interceptor.regex = <your regex>
+agent.sources.logs_source.interceptors.regex_filter_interceptor.excludeEvents = true
+
+
+To route events based on headers use Multiplexing Channel Selector:
+
+a1.sources = r1
+a1.channels = c1 c2 c3 c4
+a1.sources.r1.selector.type = multiplexing
+a1.sources.r1.selector.header = state
+a1.sources.r1.selector.mapping.CZ = c1
+a1.sources.r1.selector.mapping.US = c2 c3
+a1.sources.r1.selector.default = c4
+Here events with header "state"="CZ" go to channel "c1", with "state"="US" - to "c2" and "c3", all other - to "c4".
+
+This way you can also filter events by header - just route specific header value to channel, which points to Null Sink.

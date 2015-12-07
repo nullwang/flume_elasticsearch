@@ -1,0 +1,271 @@
+﻿
+
+参考文档：
+http://thediscoblog.com/blog/2013/09/03/effortless-elasticsearch-clustering/
+https://www.elastic.co/guide/en/elasticsearch/guide/current/_document_oriented.html
+http://grokbase.com/t/gg/elasticsearch/14789e6v2s/timeout-notification-from-cluster-service
+
+
+======================================启动
+在 低版本 JDK 上启动 -d 后台启动
+export ES_JAVA_OPTS="-XX:-UseSuperWord"; ./bin/elasticsearch -d 
+
+================================结构与solr 区别
+存储整个document/object —not rows of columnar data(不是某个行元素)
+Relational DB  ⇒ Databases ⇒ Tables ⇒ Rows      ⇒ Columns
+Elasticsearch  ⇒ Indices   ⇒ Types  ⇒ Documents ⇒ Fields
+By default, every field in a document is indexed (has an inverted index) and thus is searchable
+
+2个node
+clientNode 加入到cluster，不存储数据，转发数据
+transportNode  不加入到clustger，转发数据
+
+lasticSearch
+luster, node, and shard
+cluster 组成： a cluster consists of one or more nodes with the same cluster.name
+
+ master node:   in charge of managing cluster-wide changes like creating or deleting an index, or adding or removing a node from the cluster
+管理索引创建、删除、cluster中节点加入或离开
+
+Shard ：a shard is a single instance of Lucene， 被分配给Node
+Index: (逻辑名称指向一个或多个物理Shards)an index is just a logical namespace that points to one or more physical shards
+Node： （一个运行的ElasticSearch 实例）A node is a running instance of Elasticsearch,
+
+Replica Shard: A replica shard is just a copy of a primary shard
+Primary Shard: 
+
+Document Meta (文档元数据)
+_index
+Where the document lives
+_type
+The class of object that the document represents
+_id
+The unique identifier for the document
+
+
+================================操作命令
+list all index
+curl 'localhost:9200/_cat/indices?v'
+curl -XGET 'http://localhost:9200/twitter/'
+put /indexname/type/id
+
+PUT /megacorp/employee/1
+{
+    "first_name" : "John",
+    "last_name" :  "Smith",
+    "age" :        25,
+    "about" :      "I love to go rock climbing",
+    "interests": [ "sports", "music" ]
+}
+
+使用id查询
+GET /megacorp/employee/1
+
+GET /megacorp/employee/_search?q=last_name:Smith
+
+DSL query language 全文检索
+
+
+
+GET /megacorp/employee/_search
+{
+    "query" : {
+        "match" : {
+            "last_name" : "Smith"
+        }
+    }
+}
+
+短语检索
+GET /megacorp/employee/_search
+{
+    "query" : {
+        "match_phrase" : {
+            "about" : "rock climbing"
+        }
+    }
+}
+
+结果高亮
+GET /megacorp/employee/_search
+{
+    "query" : {
+        "match_phrase" : {
+            "about" : "rock climbing"
+        }
+    },
+    "highlight": {
+        "fields" : {
+            "about" : {}
+        }
+    }
+}
+
+提交文档，自定义id
+PUT /{index}/{type}/{id}
+{
+  "field": "value",
+  ...
+}
+生成
+POST /website/blog/
+{
+  "title": "My second blog entry",
+  "text":  "Still trying this out...",
+  "date":  "2014/01/01"
+}
+22 character long, URL-safe, Base64-encoded string universally unique identifiers
+
+PUT /website/blog/123?op_type=crea
+{ ... }
+PUT /website/blog/123/_create
+{ ... }
+
+
+获取文档
+GET /website/blog/123?pretty
+curl -i -XGET http://localhost:9200/website/blog/124?pretty
+设置 TTL 为enable状
+curl -XGET http://192.168.1.159:9200/test/web/_mapping?pretty=true 
+
+curl -XPUT 'http://192.168.1.159:9200/test/web/_mapping?pretty' -d '{
+  "web": {
+     "_ttl":{"enabled": true}
+  } 
+}'
+
+GET /megacorp/employee/_search?q=last_name:Smith
+
+GET /website/blog/123?_source=title,text  //指定字段
+{
+  "_index" :   "website",
+  "_type" :    "blog",
+  "_id" :      "123",
+  "_version" : 1,
+  "found" :    true,
+  "_source" :  {
+      "title": "My first blog entry",
+      "text":  "Just trying this out...",
+      "date":  "2014/01/01"
+  }
+}
+
+删除文档
+DELETE /website/blog/123
+
+
+索引管理，创建
+PUT /my_index
+{
+     "settings": {
+        "number_of_shards" :   1,
+        "number_of_replicas" : 0
+    },
+    "mappings": {
+        "type_one": { ... any mappings ... },
+        "type_two": { ... any mappings ... },
+        ...
+    }
+}
+
+删除
+DELETE /my_index
+DELETE /index_one,index_two
+DELETE /index_*
+DELETE /_all
+
+修改
+PUT /my_temp_index/_settings
+{
+    "number_of_replicas": 1
+}
+
+Document In lucene (无类型， no Type no mapping)
+A document in Lucene consists of a simple list of field-value pairs. A field must have at least one value, but any field can contain multiple values.
+all values are just treated as opaque bytes. 所有值看做字节码（ 没有类型） 
+
+
+Root object
+_source Field : 默认 开启，包含索引文档的json数据
+PUT /my_index
+{
+    "mappings": {
+        "my_type": {
+            "_source": {
+                "enabled":  false
+            }
+        }
+    }
+}
+
+_all field : indexes the values from all other fields as one big string (query 语句默认查找 _all fileld)
+
+//disable _all field
+PUT /my_index/_mapping/my_type
+{
+    "my_type": {
+        "_all": { "enabled": false }
+    }
+}
+
+几个meta Field的说明
+_id
+The string ID of the document
+_type
+The type name of the document
+_index
+The index where the document lives
+_uid
+The _type and _id concatenated together as type#id
+By default, the _uid field is stored (can be retrieved) and indexed (searchable). The _type field is indexed but not stored, and the _id and _index fields are neither indexed nor stored, meaning they don’t really exist.
+
+
+Core type
+https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-core-types.html
+
+修改索引属性
+PUT my_index/_mapping/my_type
+{
+  "properties": {
+    "title": {
+      "type": "string",
+      "norms": {
+        "enabled": false
+      }
+    }
+  }
+}
+
+curl -X PUT -d arg=v1 -d arg2-v2 localhost:8080
+
+curl -H "Content-Type: application/json" -X POST -d '{"userName":"xxx","pass":"p1"}' http://locahost:80/api/login
+
+curl -H  "Content-Type: application/json"  --data @body.json http://localhost:9200/_all/web/_mapping/
+
+http://localhost:9200/_all/_mapping/web
+
+"index":"no"
+"include_in_all":""
+
+PUT /my_index
+{
+    "mappings": {
+        "my_type": {
+            "_id": {
+                "path": "doc_id" 
+            },
+            "properties": {
+                "doc_id": {
+                    "type":   "string",
+                    "index":  "not_analyzed"
+                }
+            }
+        }
+    }
+}
+
+metaFields
+_source, _id, _type, _index
+
+
+curl http://host:port/_cluster/health

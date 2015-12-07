@@ -1,0 +1,33 @@
+agent.sources = tail
+
+agent.channels = memoryChannel
+
+agent.channels.memoryChannel.type = memory
+
+agent.sources.tail.channels = memoryChannel
+
+agent.sources.tail.type = exec
+
+agent.sources.tail.command = tail -F /dir/XX.log
+
+agent.sources.tail.interceptors=i3 i1
+
+
+agent.sources.tail.interceptors.i3.type=org.apache.flume.interceptor.HostInterceptor$Builder
+
+agent.sources.tail.interceptors.i3.hostHeader = host
+
+#agent.sources.tail.interceptors.i1.type = regex_extractor
+#agent.sources.tail.interceptors.i1.regex = (\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2}\\.\\d{3})\\s\\[(.*)\\]\\s(\\w*)\\s(.*)\\s-\\s\\[clientId=(.*),\\sop=(.*),\\scid=(.*),\\smp=(.*),\\stno=(.*),\\stm=(.*),\\sver=(.*?)](.*)
+#agent.sources.tail.interceptors.i1.serializers = s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11
+#agent.sources.tail.interceptors.i1.serializers.s1.name = logtime
+#agent.sources.tail.interceptors.i1.serializers.s2.name = thread
+#agent.sources.tail.interceptors.i1.serializers.s3.name = loglevel
+#agent.sources.tail.interceptors.i1.serializers.s4.name = logname
+#agent.sources.tail.interceptors.i1.serializers.s5.name = clientid
+#agent.sources.tail.interceptors.i1.serializers.s6.name = ss
+#agent.sources.tail.interceptors.i1.serializers.s7.name = xx
+#agent.sources.tail.interceptors.i1.serializers.s8.name = ww
+#agent.sources.tail.interceptors.i1.serializers.s9.name = xx
+#agent.sources.tail.interceptors.i1.serializers.s10.name = adsf
+#agent.sources.tail.interceptors.i1.serializers.s11.name = vvv
